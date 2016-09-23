@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.mvad.flink</groupId>
+  <artifactId>flink-bootstrap</artifactId>
+  <packaging>pom</packaging>
+  <version>1.0-SNAPSHOT</version>
+  <modules>
+    <module>flink-demo</module>
+    <module>assembly</module>
+  </modules>
+  <properties>
+    <scala.binary.version>2.11</scala.binary.version>
+    <flink.version>1.1.2</flink.version>
+    <hbase.version>1.2.0-cdh5.8.0</hbase.version>
+  </properties>
+
+
+  <repositories>
+    <repository>
+      <id>mediav-proxy</id>
+      <name>All Mediav Proxy Repositories</name>
+      <url>https://maven.corp.mediav.com/nexus/content/groups/maven2-proxy</url>
+    </repository>
+    <repository>
+      <id>mediav-releases</id>
+      <name>Releases Repository</name>
+      <url>https://maven.corp.mediav.com/nexus/content/repositories/releases</url>
+    </repository>
+    <repository>
+      <id>mediav-snapshots</id>
+      <name>Snapshots Repository</name>
+      <url>https://maven.corp.mediav.com/nexus/content/repositories/snapshots</url>
+    </repository>
+    <repository>
+      <id>mediav-thirdparty</id>
+      <name>Third Party Repository</name>
+      <url>https://maven.corp.mediav.com/nexus/content/repositories/thirdparty</url>
+    </repository>
+    <repository>
+      <id>cloudera</id>
+      <name>Cloudera Repository</name>
+      <url>http://repository.cloudera.com/artifactory/libs-release</url>
+    </repository>
+  </repositories>
+
+</project>
