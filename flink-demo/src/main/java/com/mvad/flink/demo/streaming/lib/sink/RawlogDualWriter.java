@@ -17,10 +17,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.slf4j.Logger;
@@ -43,7 +40,7 @@ public class RawlogDualWriter<T extends PrimitiveByteArrayWrapper> extends Strea
   private transient Path tmpIndexFile = null;
   private transient Path finalIndexFile = null;
   private transient RawBlockWriter writer = null;
-  private transient Table table = null;
+  private transient HTable table = null;
   private String htablename = null;
 
   public RawlogDualWriter(String htablename) {
@@ -79,8 +76,9 @@ public class RawlogDualWriter<T extends PrimitiveByteArrayWrapper> extends Strea
 
     Configuration hbaseConf = HBaseConfiguration.create(conf);
     hbaseConf.set("hbase.zookeeper.quorum", "nn7ss.prod.mediav.com,nn8ss.prod.mediav.com,nn9ss.prod.mediav.com");
-    Connection conn = ConnectionFactory.createConnection(hbaseConf);
-    this.table = conn.getTable(TableName.valueOf(htablename));
+    this.table = new HTable(hbaseConf, htablename);
+    this.table.setAutoFlush(false);
+    this.table.setWriteBufferSize(6 * 1024 * 1024);
   }
 
   @Override
