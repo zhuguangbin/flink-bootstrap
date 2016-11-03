@@ -50,7 +50,7 @@ object DSPCookieIndexer {
     TableSnapshotInputFormat.setInput(job, snapshot, new Path("viewfs://ss-hadoop/tmp/dspsessionlogbuilder"))
 
     val hbase = env.createHadoopInput(new TableSnapshotInputFormat, classOf[ImmutableBytesWritable], classOf[Result], job)
-    val indexPuts: DataSet[(ImmutableBytesWritable,Put)] = hbase.flatMap(e => {
+    val indexPuts: DataSet[(ImmutableBytesWritable,Mutation)] = hbase.flatMap(e => {
       val result = e._2
       val row = result.getRow
       val u = result.getFamilyMap(Bytes.toBytes("u")).flatMap(e => {
@@ -102,8 +102,8 @@ object DSPCookieIndexer {
       })
       u ++ s ++ c
     })
-    val outputformat = new HadoopOutputFormat[ImmutableBytesWritable,_ <: Mutation](new TableOutputFormat[ImmutableBytesWritable](), job);
-//    indexPuts.output(outputformat)
+    val outputformat = new HadoopOutputFormat[ImmutableBytesWritable,Mutation](new TableOutputFormat[ImmutableBytesWritable](), job);
+    indexPuts.output(outputformat)
     env.execute("DSPCookieIndexer")
   }
 }
