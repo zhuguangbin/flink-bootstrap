@@ -2,9 +2,12 @@ package com.mvad.flink.demo.batch
 
 import com.mediav.data.log.LogUtils
 import com.mediav.data.log.unitedlog.UnitedEvent
+import com.mediav.elephantbird.mapreduce.input.MultiInputFormat
+import com.twitter.elephantbird.mapreduce.io.BinaryWritable
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala._
 import org.apache.flink.api.scala.hadoop.mapreduce.HadoopOutputFormat
+import org.apache.flink.hadoopcompatibility.HadoopInputs
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.client._
@@ -12,7 +15,10 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapreduce._
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil
 import org.apache.hadoop.hbase.util.{Base64, Bytes}
+import org.apache.hadoop.io.{LongWritable, Text}
+import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 
 import scala.collection.JavaConversions._
 
@@ -49,61 +55,67 @@ object DSPCookieIndexer {
     job.setInputFormatClass(classOf[TableSnapshotInputFormat])
     TableSnapshotInputFormat.setInput(job, snapshot, new Path("viewfs://ss-hadoop/tmp/dspsessionlogbuilder"))
 
-    val hbase = env.createHadoopInput(new TableSnapshotInputFormat, classOf[ImmutableBytesWritable], classOf[Result], job)
-    val indexPuts: DataSet[(ImmutableBytesWritable,Mutation)] = hbase.flatMap(e => {
-      val result = e._2
-      val row = result.getRow
-      val u = result.getFamilyMap(Bytes.toBytes("u")).flatMap(e => {
-        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
-        val mvid = ue.getLinkedIds.getMvid
-        val impressionInfos = if (ue != null && ue.isSetAdvertisementInfo && (ue.getAdvertisementInfo.isSetImpressionInfos || ue.getAdvertisementInfo.isSetImpressionInfo)) {
-          ue.getAdvertisementInfo.getImpressionInfos.asInstanceOf[java.util.ArrayList[com.mediav.data.log.unitedlog.ImpressionInfo]].toList
-        } else {
-          Seq()
-        }
+    val hbase = env.createInput(HadoopInputs.createHadoopInput(new TableSnapshotInputFormat, classOf[ImmutableBytesWritable], classOf[Result], job))
 
-        val putRecords = impressionInfos.map(impressionInfo => {
-          val showRequestId = impressionInfo.getShowRequestId
-          val rowkey = s"${showRequestId.toString.hashCode}#${showRequestId.toString}"
+    val inputPath = ""
 
-          val put = new Put(Bytes.toBytes(rowkey))
-          put.addColumn(Bytes.toBytes("u"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(showRequestId))
-          (new ImmutableBytesWritable,put)
-        })
-        putRecords
-      })
+    val ds = env.createInput(HadoopInputs.readHadoopFile(new MultiInputFormat[UnitedEvent](), classOf[LongWritable], classOf[BinaryWritable[UnitedEvent]], inputPath))
 
-      val s = result.getFamilyMap(Bytes.toBytes("s")).flatMap(e => {
-        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
-        val mvid = ue.getLinkedIds.getMvid
-        val impressionInfos = if (ue != null && ue.isSetAdvertisementInfo && (ue.getAdvertisementInfo.isSetImpressionInfos || ue.getAdvertisementInfo.isSetImpressionInfo)) {
-          ue.getAdvertisementInfo.getImpressionInfos.asInstanceOf[java.util.ArrayList[com.mediav.data.log.unitedlog.ImpressionInfo]].toList
-        } else {
-          Seq()
-        }
 
-        val putRecords = impressionInfos.map(impressionInfo => {
-          val showRequestId = impressionInfo.getShowRequestId
-          val rowkey = s"${showRequestId.toString.hashCode}#${showRequestId.toString}"
-
-          val put = new Put(Bytes.toBytes(rowkey))
-          put.addColumn(Bytes.toBytes("s"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(showRequestId))
-          (new ImmutableBytesWritable,put)
-        })
-        putRecords
-      })
-
-      val c = result.getFamilyMap(Bytes.toBytes("c")).map(e => {
-        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
-        val mvid = ue.getLinkedIds.getMvid
-        val put = new Put(Bytes.toBytes(mvid))
-        put.addColumn(Bytes.toBytes("c"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(ue.getAdvertisementInfo.getImpressionInfo.getShowRequestId))
-        (new ImmutableBytesWritable,put)
-      })
-      u ++ s ++ c
-    })
-    val outputformat = new HadoopOutputFormat[ImmutableBytesWritable,Mutation](new TableOutputFormat[ImmutableBytesWritable](), job);
-    indexPuts.output(outputformat)
+//    val indexPuts: DataSet[(ImmutableBytesWritable,Mutation)] = hbase.flatMap(e => {
+//      val result = e._2
+//      val row = result.getRow
+//      val u = result.getFamilyMap(Bytes.toBytes("u")).flatMap(e => {
+//        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
+//        val mvid = ue.getLinkedIds.getMvid
+//        val impressionInfos = if (ue != null && ue.isSetAdvertisementInfo && (ue.getAdvertisementInfo.isSetImpressionInfos || ue.getAdvertisementInfo.isSetImpressionInfo)) {
+//          ue.getAdvertisementInfo.getImpressionInfos.asInstanceOf[java.util.ArrayList[com.mediav.data.log.unitedlog.ImpressionInfo]].toList
+//        } else {
+//          Seq()
+//        }
+//
+//        val putRecords = impressionInfos.map(impressionInfo => {
+//          val showRequestId = impressionInfo.getShowRequestId
+//          val rowkey = s"${showRequestId.toString.hashCode}#${showRequestId.toString}"
+//
+//          val put = new Put(Bytes.toBytes(rowkey))
+//          put.addColumn(Bytes.toBytes("u"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(showRequestId))
+//          (new ImmutableBytesWritable,put)
+//        })
+//        putRecords
+//      })
+//
+//      val s = result.getFamilyMap(Bytes.toBytes("s")).flatMap(e => {
+//        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
+//        val mvid = ue.getLinkedIds.getMvid
+//        val impressionInfos = if (ue != null && ue.isSetAdvertisementInfo && (ue.getAdvertisementInfo.isSetImpressionInfos || ue.getAdvertisementInfo.isSetImpressionInfo)) {
+//          ue.getAdvertisementInfo.getImpressionInfos.asInstanceOf[java.util.ArrayList[com.mediav.data.log.unitedlog.ImpressionInfo]].toList
+//        } else {
+//          Seq()
+//        }
+//
+//        val putRecords = impressionInfos.map(impressionInfo => {
+//          val showRequestId = impressionInfo.getShowRequestId
+//          val rowkey = s"${showRequestId.toString.hashCode}#${showRequestId.toString}"
+//
+//          val put = new Put(Bytes.toBytes(rowkey))
+//          put.addColumn(Bytes.toBytes("s"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(showRequestId))
+//          (new ImmutableBytesWritable,put)
+//        })
+//        putRecords
+//      })
+//
+//      val c = result.getFamilyMap(Bytes.toBytes("c")).map(e => {
+//        val ue = LogUtils.thriftBinarydecoder(e._2, classOf[UnitedEvent])
+//        val mvid = ue.getLinkedIds.getMvid
+//        val put = new Put(Bytes.toBytes(mvid))
+//        put.addColumn(Bytes.toBytes("c"), Bytes.toBytes("id"), ue.getEventTime, Bytes.toBytes(ue.getAdvertisementInfo.getImpressionInfo.getShowRequestId))
+//        (new ImmutableBytesWritable,put)
+//      })
+//      u ++ s ++ c
+//    })
+//    val outputformat = new HadoopOutputFormat[ImmutableBytesWritable,Mutation](new TableOutputFormat[ImmutableBytesWritable](), job);
+//    indexPuts.output(outputformat)
     env.execute("DSPCookieIndexer")
   }
 }

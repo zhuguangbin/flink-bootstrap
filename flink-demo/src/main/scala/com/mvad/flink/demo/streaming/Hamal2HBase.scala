@@ -9,7 +9,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, _}
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09
+import org.apache.flink.streaming.connectors.kafka.{FlinkKafkaConsumer, FlinkKafkaConsumer}
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.client._
@@ -46,10 +46,9 @@ object Hamal2HBase {
 
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     env.getConfig.disableSysoutLogging
-    env.getConfig.setRestartStrategy(RestartStrategies.fixedDelayRestart(4, 10000))
     env.enableCheckpointing(3000) // create a checkpoint every 3 secodns
     env.getConfig.setGlobalJobParameters(parameterTool) // make parameters available in the web interface
-    val stream: DataStream[String] = env.addSource(new FlinkKafkaConsumer09[String](topic, new SimpleStringSchema, props))
+    val stream: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String](topic, new SimpleStringSchema, props))
 
     val puts = stream.flatMap(line => {
       val raw = Base64.getDecoder.decode(line)
