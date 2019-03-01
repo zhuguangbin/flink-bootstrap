@@ -66,7 +66,7 @@ object RealTimeSession {
       impressionInfos.map(impressionInfo => (ue.getLogId, ue.getEventTime, new TSerializer(new TBinaryProtocol.Factory()).serialize(ue)))
     }).map(log => {
       val put = new Put(Bytes.toBytes(log._1))
-      put.addColumn(Bytes.toBytes("s"), Bytes.toBytes(log._2),log._3)
+      put.addColumn(Bytes.toBytes("s"), Bytes.toBytes(log._2), log._3)
       put
     }).writeUsingOutputFormat(new HBaseOutputFormat("nn7ss.prod.mediav.com,nn8ss.prod.mediav.com,nn9ss.prod.mediav.com", "session"))
 
@@ -166,5 +166,6 @@ object RealTimeSession {
       table.setAutoFlush(false)
       taskNumbers = taskNumber.toString
     }
-
   }
+
+}
