@@ -16,6 +16,8 @@
     <scala.binary.version>2.11</scala.binary.version>
     <flink.version>1.7.1</flink.version>
     <hbase.version>1.2.0-cdh5.8.0</hbase.version>
+    <thrift.versioin></thrift.versioin>
+    <protobuf.version></protobuf.version>
   </properties>
 
 
